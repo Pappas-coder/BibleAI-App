@@ -91,7 +91,7 @@ function App() {
           continue;
         }
         
-        setMessages(prev => [...prev, { role: 'assistant', text: "I'm a little busy right now! Please wait a moment and try again. 🙏" }]);
+        setMessages(prev => [...prev, { role: 'assistant', text: `I'm a little busy right now! Please wait a moment and try again. 🙏\n\n*(Debug Error: ${error.message})*` }]);
         setIsLoading(false);
         return;
       }
