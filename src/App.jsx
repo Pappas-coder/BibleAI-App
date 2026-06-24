@@ -104,6 +104,29 @@ function App() {
     setEditingChatId(null);
   };
 
+  const deleteChat = (id, e) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this chat?")) {
+      setChatHistory(prev => {
+        let updated = prev.filter(chat => chat.id !== id);
+        
+        if (updated.length === 0) {
+          const newChat = { id: Date.now(), title: 'New Chat', messages: [{ role: 'assistant', text: "Welcome! How can I help you today?" }], date: new Date().toLocaleDateString() };
+          updated = [newChat];
+        }
+        
+        localStorage.setItem('bibleAIChatHistory', JSON.stringify(updated));
+        
+        if (currentChatId === id) {
+          setCurrentChatId(updated[0].id);
+          setMessages(updated[0].messages);
+        }
+        
+        return updated;
+      });
+    }
+  };
+
   // Bible Reader State
   const [selectedBook, setSelectedBook] = useState('John');
   const [selectedChapter, setSelectedChapter] = useState('1');
@@ -205,16 +228,26 @@ function App() {
                 )}
               </div>
               {editingChatId !== chat.id && (
-                <button 
-                  className="edit-btn" 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingChatId(chat.id);
-                    setEditTitle(chat.title);
-                  }}
-                >
-                  ✎
-                </button>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  <button 
+                    className="edit-btn" 
+                    title="Rename"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingChatId(chat.id);
+                      setEditTitle(chat.title);
+                    }}
+                  >
+                    ✎
+                  </button>
+                  <button 
+                    className="delete-btn" 
+                    title="Delete"
+                    onClick={(e) => deleteChat(chat.id, e)}
+                  >
+                    🗑
+                  </button>
+                </div>
               )}
             </div>
           ))}
