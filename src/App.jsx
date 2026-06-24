@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import ReactMarkdown from 'react-markdown'
 
@@ -28,7 +28,81 @@ function App() {
     { role: 'assistant', text: "Welcome! How can I help you today?" }
   ]);
   const [input, setInput] = useState('');
+  const [chatHistory, setChatHistory] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!isLoading && inputRef.current && activeTab === 'chat') {
+      inputRef.current.focus();
+    }
+  }, [isLoading, activeTab]);
+
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('bibleAIChatHistory');
+    if (savedHistory) {
+      const parsedHistory = JSON.parse(savedHistory);
+      setChatHistory(parsedHistory);
+      if (parsedHistory.length > 0) {
+        setCurrentChatId(parsedHistory[0].id);
+        setMessages(parsedHistory[0].messages);
+      }
+    } else {
+      const newChat = { id: Date.now(), title: 'New Chat', messages: [{ role: 'assistant', text: "Welcome! How can I help you today?" }], date: new Date().toLocaleDateString() };
+      setChatHistory([newChat]);
+      setCurrentChatId(newChat.id);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentChatId && messages.length > 0) {
+      setChatHistory(prev => {
+        const updatedHistory = prev.map(chat => {
+          if (chat.id === currentChatId) {
+            let newTitle = chat.title;
+            if (newTitle === 'New Chat' && messages.length > 1) {
+              newTitle = messages[1].text.slice(0, 30) + (messages[1].text.length > 30 ? '...' : '');
+            }
+            return { ...chat, messages, title: newTitle };
+          }
+          return chat;
+        });
+        localStorage.setItem('bibleAIChatHistory', JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
+    }
+  }, [messages, currentChatId]);
+
+  const startNewChat = () => {
+    const newChat = { id: Date.now(), title: 'New Chat', messages: [{ role: 'assistant', text: "Welcome! How can I help you today?" }], date: new Date().toLocaleDateString() };
+    setChatHistory(prev => [newChat, ...prev]);
+    setCurrentChatId(newChat.id);
+    setMessages(newChat.messages);
+    setIsDrawerOpen(false);
+  };
+
+  const switchChat = (id) => {
+    const chat = chatHistory.find(c => c.id === id);
+    if (chat) {
+      setCurrentChatId(id);
+      setMessages(chat.messages);
+      setIsDrawerOpen(false);
+    }
+  };
+
+  const saveTitle = (id) => {
+    if (!editTitle.trim()) return;
+    setChatHistory(prev => {
+      const updated = prev.map(chat => chat.id === id ? { ...chat, title: editTitle } : chat);
+      localStorage.setItem('bibleAIChatHistory', JSON.stringify(updated));
+      return updated;
+    });
+    setEditingChatId(null);
+  };
 
   // Bible Reader State
   const [selectedBook, setSelectedBook] = useState('John');
@@ -100,6 +174,53 @@ function App() {
 
   return (
     <>
+      <button className="menu-btn" onClick={() => setIsDrawerOpen(true)}>☰</button>
+      
+      <div className={`drawer-overlay ${isDrawerOpen ? 'open' : ''}`} onClick={() => setIsDrawerOpen(false)}></div>
+      <div className={`drawer ${isDrawerOpen ? 'open' : ''}`}>
+        <div className="drawer-header">
+          <h2>History</h2>
+          <button className="close-btn" onClick={() => setIsDrawerOpen(false)}>✕</button>
+        </div>
+        <button onClick={startNewChat} style={{ marginBottom: '20px', width: '100%' }}>+ New Chat</button>
+        <div className="history-list">
+          {chatHistory.map(chat => (
+            <div key={chat.id} className={`history-item ${chat.id === currentChatId ? 'active' : ''}`}>
+              <div className="history-item-content" onClick={() => { if (editingChatId !== chat.id) switchChat(chat.id); }}>
+                {editingChatId === chat.id ? (
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onBlur={() => saveTitle(chat.id)}
+                    onKeyPress={(e) => e.key === 'Enter' && saveTitle(chat.id)}
+                    autoFocus
+                    style={{ width: '100%', padding: '5px', borderRadius: '5px', border: '1px solid var(--border)' }}
+                  />
+                ) : (
+                  <>
+                    <h4 className="history-title">{chat.title}</h4>
+                    <p className="history-date">{chat.date}</p>
+                  </>
+                )}
+              </div>
+              {editingChatId !== chat.id && (
+                <button 
+                  className="edit-btn" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingChatId(chat.id);
+                    setEditTitle(chat.title);
+                  }}
+                >
+                  ✎
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <header>
         <h1>Bible</h1>
       </header>
@@ -150,6 +271,7 @@ function App() {
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <input 
+                ref={inputRef}
                 type="text" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

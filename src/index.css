@@ -136,3 +136,147 @@ button:active {
 .chat-bubble li {
   margin-bottom: 0.3em;
 }
+
+/* Drawer Styles */
+.drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.drawer-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  left: -320px;
+  width: 300px;
+  height: 100vh;
+  background: var(--bg);
+  box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+  z-index: 1000;
+  transition: left 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.drawer.open {
+  left: 0;
+}
+
+.drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.drawer-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background: none;
+  color: var(--text);
+  box-shadow: none;
+  padding: 5px 10px;
+  font-size: 1.5rem;
+}
+
+.close-btn:hover {
+  background: var(--bg-gradient);
+  transform: none;
+  box-shadow: none;
+}
+
+.history-list {
+  flex-grow: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  background: rgba(0,0,0,0.03);
+  transition: background 0.2s ease;
+}
+
+.history-item:hover, .history-item.active {
+  background: var(--accent-bg);
+}
+
+.history-item-content {
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.history-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.history-date {
+  font-size: 0.75rem;
+  color: #888;
+  margin: 0;
+}
+
+.edit-btn {
+  background: none;
+  color: var(--accent);
+  padding: 5px;
+  box-shadow: none;
+  font-size: 0.9rem;
+}
+
+.edit-btn:hover {
+  background: rgba(0,0,0,0.05);
+  box-shadow: none;
+  transform: none;
+}
+
+.menu-btn {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px 15px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 998;
+}
+
+.menu-btn:hover {
+  transform: scale(1.05);
+}
