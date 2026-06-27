@@ -132,6 +132,8 @@ function App() {
   const [selectedChapter, setSelectedChapter] = useState('1');
   const [chapterText, setChapterText] = useState(null);
   const [isLoadingChapter, setIsLoadingChapter] = useState(false);
+  const [studyNotes, setStudyNotes] = useState(null);
+  const [isGeneratingNotes, setIsGeneratingNotes] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'read') {
@@ -142,6 +144,7 @@ function App() {
   const fetchChapter = async () => {
     setIsLoadingChapter(true);
     setChapterText(null);
+    setStudyNotes(null);
     try {
       const response = await fetch(`https://bible-api.com/${selectedBook}+${selectedChapter}`);
       const data = await response.json();
@@ -151,6 +154,22 @@ function App() {
       setChapterText([{ verse: 0, text: "Error loading chapter. It may not exist." }]);
     } finally {
       setIsLoadingChapter(false);
+    }
+  };
+
+  const generateStudyNotes = async () => {
+    setIsGeneratingNotes(true);
+    setStudyNotes(null);
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const prompt = `Provide a brief, practical study bible explanation for ${selectedBook} chapter ${selectedChapter} in Afrikaans. The style should be practical, focused on life application and historical context, similar to a Study Bible like 'Die Bybel in Praktyk'. Do not be overly verbose, but give enough to understand the chapter's core message. Write exclusively in Afrikaans. Use markdown for formatting.`;
+      const result = await model.generateContent(prompt);
+      setStudyNotes(result.response.text());
+    } catch (error) {
+      console.error('Error generating notes:', error);
+      setStudyNotes('Sorry, there was an error generating the study notes. Please try again.\n\n*(Debug Error: ' + error.message + ')*');
+    } finally {
+      setIsGeneratingNotes(false);
     }
   };
 
@@ -361,6 +380,31 @@ function App() {
                     {v.text}
                   </p>
                 ))}
+
+                <div style={{ marginTop: '30px', borderTop: '2px dashed var(--border)', paddingTop: '20px' }}>
+                  {!studyNotes && !isGeneratingNotes && (
+                    <button onClick={generateStudyNotes} style={{ width: '100%', padding: '15px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '1.2rem' }}>📖</span> Kry Studie Aantekeninge
+                    </button>
+                  )}
+                  
+                  {isGeneratingNotes && (
+                    <div className="card" style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent)', margin: '0', padding: '15px' }}>
+                      <em style={{ color: 'var(--accent)' }}>Dink na oor {selectedBook} {selectedChapter}...</em>
+                    </div>
+                  )}
+
+                  {studyNotes && !isGeneratingNotes && (
+                    <div className="card" style={{ background: 'var(--bg)', border: '1px solid var(--accent)', margin: '0', padding: '20px' }}>
+                      <h3 style={{ marginTop: 0, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span>📖</span> Studie Aantekeninge
+                      </h3>
+                      <div className="chat-bubble" style={{ background: 'transparent', padding: 0, boxShadow: 'none' }}>
+                        <ReactMarkdown>{studyNotes}</ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <p>Select a book and chapter.</p>
