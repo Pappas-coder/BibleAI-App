@@ -44,18 +44,15 @@ function App() {
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('bibleAIChatHistory');
+    const newChat = { id: Date.now(), title: 'New Chat', messages: [{ role: 'assistant', text: "Welcome! How can I help you today?" }], date: new Date().toLocaleDateString() };
     if (savedHistory) {
       const parsedHistory = JSON.parse(savedHistory);
-      setChatHistory(parsedHistory);
-      if (parsedHistory.length > 0) {
-        setCurrentChatId(parsedHistory[0].id);
-        setMessages(parsedHistory[0].messages);
-      }
+      setChatHistory([newChat, ...parsedHistory]);
     } else {
-      const newChat = { id: Date.now(), title: 'New Chat', messages: [{ role: 'assistant', text: "Welcome! How can I help you today?" }], date: new Date().toLocaleDateString() };
       setChatHistory([newChat]);
-      setCurrentChatId(newChat.id);
     }
+    setCurrentChatId(newChat.id);
+    setMessages(newChat.messages);
   }, []);
 
   useEffect(() => {
