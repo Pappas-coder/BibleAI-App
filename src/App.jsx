@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import ReactMarkdown from 'react-markdown'
 
@@ -134,6 +134,7 @@ function App() {
   const [isLoadingChapter, setIsLoadingChapter] = useState(false);
   const [studyNotes, setStudyNotes] = useState(null);
   const [isGeneratingNotes, setIsGeneratingNotes] = useState(false);
+  const [sectionHeadings, setSectionHeadings] = useState({});
 
   useEffect(() => {
     if (activeTab === 'read') {
@@ -145,15 +146,43 @@ function App() {
     setIsLoadingChapter(true);
     setChapterText(null);
     setStudyNotes(null);
+    setSectionHeadings({});
     try {
       const response = await fetch(`https://bible-api.com/${selectedBook}+${selectedChapter}`);
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setChapterText(data.verses);
+      fetchSectionHeadings();
     } catch (error) {
       setChapterText([{ verse: 0, text: "Error loading chapter. It may not exist." }]);
     } finally {
       setIsLoadingChapter(false);
+    }
+  };
+
+  const fetchSectionHeadings = async () => {
+    const cacheKey = `headings_${selectedBook}_${selectedChapter}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        setSectionHeadings(JSON.parse(cached));
+        return;
+      } catch (e) { /* ignore bad cache */ }
+    }
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      const prompt = `For ${selectedBook} chapter ${selectedChapter} of the Bible, provide the standard section headings that would appear in a typical study Bible. Return ONLY a valid JSON object where each key is a verse number (as a string) and the value is the section heading that starts at that verse. Example format: {"1": "The Genealogy of Jesus", "18": "The Birth of Jesus Christ"}. Do not include any other text, markdown formatting, or code fences. Just the raw JSON object.`;
+      const result = await model.generateContent(prompt);
+      let text = result.response.text().trim();
+      // Strip markdown code fences if present
+      if (text.startsWith('```')) {
+        text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+      }
+      const headings = JSON.parse(text);
+      setSectionHeadings(headings);
+      localStorage.setItem(cacheKey, JSON.stringify(headings));
+    } catch (error) {
+      console.error('Error fetching section headings:', error);
     }
   };
 
@@ -375,10 +404,25 @@ function App() {
                   {selectedBook} {selectedChapter}
                 </h2>
                 {chapterText.map(v => (
-                  <p key={v.verse} style={{ marginBottom: '10px' }}>
-                    <sup style={{ color: 'var(--accent)', fontWeight: 'bold', marginRight: '5px' }}>{v.verse}</sup>
-                    {v.text}
-                  </p>
+                  <React.Fragment key={v.verse}>
+                    {sectionHeadings[String(v.verse)] && (
+                      <h3 style={{
+                        marginTop: '25px',
+                        marginBottom: '10px',
+                        fontSize: '1.15rem',
+                        fontWeight: 700,
+                        color: 'var(--accent)',
+                        borderLeft: '3px solid var(--accent)',
+                        paddingLeft: '10px'
+                      }}>
+                        {sectionHeadings[String(v.verse)]}
+                      </h3>
+                    )}
+                    <p style={{ marginBottom: '10px' }}>
+                      <sup style={{ color: 'var(--accent)', fontWeight: 'bold', marginRight: '5px' }}>{v.verse}</sup>
+                      {v.text}
+                    </p>
+                  </React.Fragment>
                 ))}
 
                 <div style={{ marginTop: '30px', borderTop: '2px dashed var(--border)', paddingTop: '20px' }}>
