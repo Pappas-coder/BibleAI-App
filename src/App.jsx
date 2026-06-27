@@ -35,6 +35,7 @@ function App() {
   const [editTitle, setEditTitle] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (!isLoading && inputRef.current && activeTab === 'chat') {
@@ -122,6 +123,41 @@ function App() {
         return updated;
       });
     }
+  };
+
+  const exportChats = () => {
+    const data = JSON.stringify(chatHistory, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bible-ai-chats-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importChats = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (!Array.isArray(imported)) throw new Error('Invalid format');
+        setChatHistory(prev => {
+          const existingIds = new Set(prev.map(c => c.id));
+          const newChats = imported.filter(c => !existingIds.has(c.id));
+          const merged = [...prev, ...newChats];
+          localStorage.setItem('bibleAIChatHistory', JSON.stringify(merged));
+          return merged;
+        });
+        alert(`Successfully imported ${imported.length} chat(s)!`);
+      } catch (err) {
+        alert('Error: Could not read chat file. Make sure it is a valid export file.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
   };
 
   // Bible Reader State
@@ -296,6 +332,11 @@ function App() {
               )}
             </div>
           ))}
+        </div>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '15px', marginTop: '15px', display: 'flex', gap: '10px' }}>
+          <button onClick={exportChats} style={{ flex: 1, fontSize: '0.85rem', padding: '10px' }}>📤 Export</button>
+          <button onClick={() => fileInputRef.current?.click()} style={{ flex: 1, fontSize: '0.85rem', padding: '10px' }}>📥 Import</button>
+          <input ref={fileInputRef} type="file" accept=".json" onChange={importChats} style={{ display: 'none' }} />
         </div>
       </div>
 
