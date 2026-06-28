@@ -183,6 +183,12 @@ function App() {
   const [studyNotes, setStudyNotes] = useState(null);
   const [isGeneratingNotes, setIsGeneratingNotes] = useState(false);
   const [sectionHeadings, setSectionHeadings] = useState({});
+  const [savedVerses, setSavedVerses] = useState(() => {
+    const saved = localStorage.getItem('bibleAISavedVerses');
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [selectedVerseForAction, setSelectedVerseForAction] = useState(null);
+  const [noteInput, setNoteInput] = useState('');
 
   useEffect(() => {
     if (activeTab === 'read') {
@@ -248,6 +254,24 @@ function App() {
     } finally {
       setIsGeneratingNotes(false);
     }
+  };
+
+  const handleSaveVerse = (verseKey, text, color, noteText) => {
+    const updated = { ...savedVerses };
+    if (!color && (!noteText || noteText.trim() === '')) {
+      delete updated[verseKey];
+    } else {
+      updated[verseKey] = {
+        book: selectedBook,
+        chapter: selectedChapter,
+        verse: verseKey.split('_')[2],
+        text,
+        color: color !== undefined ? color : (updated[verseKey]?.color || null),
+        note: noteText !== undefined ? noteText : (updated[verseKey]?.note || '')
+      };
+    }
+    setSavedVerses(updated);
+    localStorage.setItem('bibleAISavedVerses', JSON.stringify(updated));
   };
 
   const handleSend = async () => {
@@ -366,11 +390,14 @@ function App() {
       </header>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', justifyContent: 'center' }}>
-        <button onClick={() => setActiveTab('chat')}>
+        <button onClick={() => setActiveTab('chat')} style={{ opacity: activeTab === 'chat' ? 1 : 0.6 }}>
           Chat with AI
         </button>
-        <button onClick={() => setActiveTab('read')}>
+        <button onClick={() => setActiveTab('read')} style={{ opacity: activeTab === 'read' ? 1 : 0.6 }}>
           Read the Bible
+        </button>
+        <button onClick={() => setActiveTab('notes')} style={{ opacity: activeTab === 'notes' ? 1 : 0.6 }}>
+          My Notes
         </button>
       </div>
       {activeTab === 'chat' && (
@@ -462,7 +489,12 @@ function App() {
                 <h2 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '20px' }}>
                   {selectedBook} {selectedChapter}
                 </h2>
-                {chapterText.map(v => (
+                {chapterText.map(v => {
+                  const verseKey = `${selectedBook}_${selectedChapter}_${v.verse}`;
+                  const isSelected = selectedVerseForAction === verseKey;
+                  const savedData = savedVerses[verseKey] || {};
+                  
+                  return (
                   <React.Fragment key={v.verse}>
                     {sectionHeadings[String(v.verse)] && (
                       <h3 style={{
@@ -479,10 +511,65 @@ function App() {
                     )}
                     <p style={{ marginBottom: '10px' }}>
                       <sup style={{ color: 'var(--accent)', fontWeight: 'bold', marginRight: '5px' }}>{v.verse}</sup>
-                      {v.text}
+                      <span 
+                        className={`verse-text ${savedData.color ? 'highlight-' + savedData.color : ''}`}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedVerseForAction(null);
+                          } else {
+                            setSelectedVerseForAction(verseKey);
+                            setNoteInput(savedData.note || '');
+                          }
+                        }}
+                      >
+                        {v.text}
+                      </span>
                     </p>
+                    {savedData.note && !isSelected && (
+                      <div style={{ background: 'var(--accent-bg)', padding: '10px', borderRadius: '8px', marginBottom: '15px', fontSize: '0.95rem', borderLeft: '3px solid var(--accent)' }}>
+                        📝 {savedData.note}
+                      </div>
+                    )}
+                    {isSelected && (
+                      <div className="verse-action-menu">
+                        <div className="color-picker">
+                          {['yellow', 'green', 'pink', 'blue'].map(color => (
+                            <div 
+                              key={color}
+                              className={`color-circle color-${color} ${savedData.color === color ? 'active' : ''}`}
+                              onClick={() => handleSaveVerse(verseKey, v.text, color, savedData.note)}
+                            />
+                          ))}
+                          <div 
+                            className="color-circle color-clear"
+                            onClick={() => handleSaveVerse(verseKey, v.text, null, savedData.note)}
+                            title="Clear Highlight"
+                          >
+                            ✕
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <input 
+                            type="text" 
+                            placeholder="Add a note..." 
+                            value={noteInput}
+                            onChange={(e) => setNoteInput(e.target.value)}
+                            style={{ flexGrow: 1, padding: '8px', borderRadius: '5px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+                          />
+                          <button 
+                            onClick={() => {
+                              handleSaveVerse(verseKey, v.text, savedData.color, noteInput);
+                              setSelectedVerseForAction(null);
+                            }}
+                            style={{ padding: '8px 15px' }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </React.Fragment>
-                ))}
+                )})}
 
                 <div style={{ marginTop: '30px', borderTop: '2px dashed var(--border)', paddingTop: '20px' }}>
                   {!studyNotes && !isGeneratingNotes && (
@@ -513,6 +600,51 @@ function App() {
               <p>Select a book and chapter.</p>
             )}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'notes' && (
+        <div className="card" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '20px' }}>
+          <h2 style={{ borderBottom: '1px solid var(--border)', paddingBottom: '10px', margin: '0 0 20px 0' }}>
+            My Notes & Highlights
+          </h2>
+          {Object.keys(savedVerses).length === 0 ? (
+            <p style={{ textAlign: 'center', opacity: 0.7, marginTop: '20px' }}>
+              You haven't highlighted any verses or added notes yet. <br/><br/>
+              Go to the "Read the Bible" tab and tap on a verse to save it!
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {Object.entries(savedVerses)
+                .sort((a, b) => {
+                  if (a[1].book !== b[1].book) return a[1].book.localeCompare(b[1].book);
+                  if (a[1].chapter !== b[1].chapter) return parseInt(a[1].chapter) - parseInt(b[1].chapter);
+                  return parseInt(a[1].verse) - parseInt(b[1].verse);
+                })
+                .map(([key, data]) => (
+                <div key={key} style={{ padding: '15px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--bg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <strong style={{ color: 'var(--accent)', fontSize: '1.1rem' }}>{data.book} {data.chapter}:{data.verse}</strong>
+                    <button 
+                      onClick={() => handleSaveVerse(key, data.text, null, null)}
+                      style={{ background: 'transparent', color: '#ff4757', padding: '5px', boxShadow: 'none', minWidth: 'auto' }}
+                      title="Remove"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                  <p style={{ margin: '0 0 10px 0', fontStyle: 'italic', padding: '5px', borderRadius: '4px' }} className={data.color ? 'highlight-' + data.color : ''}>
+                    "{data.text}"
+                  </p>
+                  {data.note && (
+                    <div style={{ background: 'var(--accent-bg)', padding: '10px', borderRadius: '5px', borderLeft: '3px solid var(--accent)', fontSize: '0.95rem' }}>
+                      {data.note}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </>
