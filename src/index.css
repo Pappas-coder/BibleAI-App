@@ -12,6 +12,18 @@
   --heading: 'Outfit', 'Inter', system-ui, sans-serif;
 }
 
+:root.dark-mode {
+  --text: #e2e8f0;
+  --text-h: #f7fafc;
+  --bg: #1a202c;
+  --bg-gradient: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  --border: #4a5568;
+  --accent: #4facfe;
+  --accent-secondary: #00f2fe;
+  --accent-bg: rgba(79, 172, 254, 0.2);
+  --shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
 body {
   margin: 0;
   font-family: var(--sans);
@@ -19,6 +31,10 @@ body {
   background-size: cover;
   color: var(--text);
   min-height: 100vh;
+}
+
+body.dark-mode {
+  background: var(--bg-gradient);
 }
 
 #root {

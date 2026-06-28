@@ -36,6 +36,21 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('bibleAIDarkMode');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark-mode');
+      document.body.classList.add('dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark-mode');
+      document.body.classList.remove('dark-mode');
+    }
+    localStorage.setItem('bibleAIDarkMode', isDarkMode);
+  }, [isDarkMode]);
 
   useEffect(() => {
     if (!isLoading && inputRef.current && activeTab === 'chat') {
@@ -340,8 +355,14 @@ function App() {
         </div>
       </div>
 
-      <header>
+      <header style={{ position: 'relative' }}>
         <h1>Bible</h1>
+        <button 
+          onClick={() => setIsDarkMode(!isDarkMode)} 
+          style={{ position: 'absolute', top: 0, right: 0, background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', boxShadow: 'none' }}
+        >
+          {isDarkMode ? '☀️' : '🌙'}
+        </button>
       </header>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', justifyContent: 'center' }}>
